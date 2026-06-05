@@ -1,2 +1,7 @@
 .env
 AGENTS.md
+.venv/
+__pycache__/
+*.pyc
+captured_images/
+.DS_Store
