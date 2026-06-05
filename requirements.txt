@@ -1,0 +1,5 @@
+opencv-python
+pygame
+pymunk
+google-generativeai
+python-dotenv
