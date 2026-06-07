@@ -96,6 +96,26 @@ def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size
         img_crop = img_canvas[offset_y:offset_y+crop_h, offset_x:offset_x+crop_w]
         img_display = cv2.resize(img_crop, (WIN_W, WIN_H), interpolation=cv2.INTER_LINEAR)
 
+        # 解像度に比例した動的スケーリング (基準幅 1000px)
+        scale_ratio = max(0.5, WIN_W / 1000.0)
+        font_scale = 0.6 * scale_ratio
+        thickness = max(1, int(2 * scale_ratio))
+        banner_h = int(70 * scale_ratio)
+        y1 = int(28 * scale_ratio)
+        y2 = int(55 * scale_ratio)
+        x_off = int(15 * scale_ratio)
+
+        # 画面上部に操作説明用の半透明バナーを描画
+        overlay = img_display.copy()
+        cv2.rectangle(overlay, (0, 0), (WIN_W, banner_h), (15, 20, 25), -1)
+        cv2.addWeighted(overlay, 0.7, img_display, 0.3, 0, img_display)
+
+        # 操作説明テキストの描画 (動的にスケーリングされたサイズを使用)
+        msg_trace_zoom = "Drag Mouse: Trace  |  W/S or Up/Down Arrow: Zoom"
+        msg_confirm_reset = "E: Confirm & Save  |  R: Reset Line  |  Q: Cancel"
+        cv2.putText(img_display, msg_trace_zoom, (x_off, y1), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 255, 0), thickness, cv2.LINE_AA)
+        cv2.putText(img_display, msg_confirm_reset, (x_off, y2), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+
         cv2.imshow("Freehand Tracing (Zoom: Up/Down Arrow)", img_display)
         
         # 十字キーなどの拡張キーコードを取得するため、& 0xFF は行わずに待機
