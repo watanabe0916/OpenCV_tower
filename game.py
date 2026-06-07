@@ -198,63 +198,110 @@ def create_fallback_object() -> tuple[pygame.Surface, list[tuple[float, float]],
 
 
 # -------------------------------------------------------------
+# -------------------------------------------------------------
 # サブプロセスを走らせて撮影と切り抜きを行う
 # -------------------------------------------------------------
+def run_subprocess_with_pygame_loop(cmd, screen, bg_snap, title_text, msg_text) -> bool:
+    """
+    サブプロセスを非同期起動し、ゲーム画面(bg_snap)に半透明オーバーレイを重ねて
+    描画しながら、サブプロセスの終了までPygameのイベントループを回し続ける。
+    """
+    proc = subprocess.Popen(cmd)
+    
+    title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
+    msg_font = pygame.font.SysFont("Helvetica", 16)
+    
+    clock = pygame.time.Clock()
+    success = False
+    
+    # 半透明の黒オーバーレイサーフェスを作成
+    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    overlay.fill((10, 12, 16, 180)) # うっすら暗くする
+    
+    txt_title = title_font.render(title_text, True, COLOR_ACCENT)
+    txt_msg = msg_font.render(msg_text, True, COLOR_TEXT)
+    txt_hint = msg_font.render("Please focus on the popup window on PC screen.", True, COLOR_TEXT_MUTED)
+    
+    while True:
+        ret = proc.poll()
+        if ret is not None:
+            success = (ret == 0)
+            break
+            
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                proc.terminate()
+                pygame.quit()
+                sys.exit()
+                
+        # 描画処理: ゲームのバックグラウンド状態をまず描画
+        screen.blit(bg_snap, (0, 0))
+        
+        # オーバーレイを重ねる
+        screen.blit(overlay, (0, 0))
+        
+        # テキストを中央に表示 (ゲーム領域の中央)
+        screen.blit(txt_title, (GAME_WIDTH // 2 - txt_title.get_width() // 2, 220))
+        screen.blit(txt_msg, (GAME_WIDTH // 2 - txt_msg.get_width() // 2, 270))
+        screen.blit(txt_hint, (GAME_WIDTH // 2 - txt_hint.get_width() // 2, 320))
+        
+        pygame.display.flip()
+        clock.tick(30)
+        
+    return success
+
+
 def run_capture_and_extract_processes(screen, font) -> bool:
     """
     capture.py と extractor.py を外部プロセスとして順次呼び出す。
     Pygameの Cocoa イベントループを阻害しないように実行中は待機画面を描画する。
     """
-    # 待機画面の描画
-    screen.fill(COLOR_BG_GAME)
-    title_font = pygame.font.SysFont("Helvetica", 28, bold=True)
-    msg_font = pygame.font.SysFont("Helvetica", 18)
+    bg_snap = screen.copy()
     
-    txt_title = title_font.render("CAPTURING BLOCK...", True, COLOR_ACCENT)
-    txt_msg = msg_font.render("Please shoot on phone & crop on the PC window.", True, COLOR_TEXT)
-    screen.blit(txt_title, (GAME_WIDTH // 2 - txt_title.get_width() // 2, 250))
-    screen.blit(txt_msg, (GAME_WIDTH // 2 - txt_msg.get_width() // 2, 300))
-    pygame.display.flip()
-    
-    try:
-        # 1. 撮影プロセスの同期呼び出し
-        print("[System] Launching capture.py...")
-        res_cap = subprocess.run([sys.executable, "capture.py"], check=False)
-        if res_cap.returncode != 0:
-            print("[System] Capture process was cancelled or failed.")
-            return False
-
-        # 2. 抽出プロセスの同期呼び出し
-        print("[System] Launching extractor.py...")
-        res_ext = subprocess.run([sys.executable, "extractor.py"], check=False)
-        if res_ext.returncode != 0:
-            print("[System] Extraction process was cancelled or failed.")
-            return False
-
-        return True
-    except Exception as e:
-        print(f"[System] Failed to invoke subprocesses: {e}")
+    # 1. 撮影プロセス
+    print("[System] Launching capture.py...")
+    cmd_cap = [sys.executable, "capture.py"]
+    success_cap = run_subprocess_with_pygame_loop(
+        cmd_cap, screen, bg_snap, 
+        "1. CAPTURING BLOCK (Camera)", 
+        "Shoot on phone. Press E (confirm), R (retry), or Q (cancel) in Preview."
+    )
+    if not success_cap:
+        print("[System] Capture process was cancelled or failed.")
         return False
+
+    # 2. 抽出プロセス
+    print("[System] Launching extractor.py...")
+    cmd_ext = [sys.executable, "extractor.py"]
+    success_ext = run_subprocess_with_pygame_loop(
+        cmd_ext, screen, bg_snap, 
+        "2. EXTRACTING BLOCK (Tracing)", 
+        "Drag mouse to trace contour on OpenCV popup window."
+    )
+    if not success_ext:
+        print("[System] Extraction process was cancelled or failed.")
+        return False
+
+    return True
 
 
 def run_extract_only_process(screen, font) -> bool:
     """
     capture.py をスキップし、extractor.py のみを外部プロセスとして直接呼び出す。
     """
-    screen.fill(COLOR_BG_GAME)
-    title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
-    msg_font = pygame.font.SysFont("Helvetica", 16)
-    
-    txt_title = title_font.render("EXTRACTING LOCAL IMAGE...", True, COLOR_ACCENT)
-    txt_msg = msg_font.render("Processing captured_images/object.png", True, COLOR_TEXT)
-    screen.blit(txt_title, (GAME_WIDTH // 2 - txt_title.get_width() // 2, 250))
-    screen.blit(txt_msg, (GAME_WIDTH // 2 - txt_msg.get_width() // 2, 300))
-    pygame.display.flip()
+    bg_snap = screen.copy()
     
     # 入力画像の存在確認
     if not os.path.exists("captured_images/object.png"):
         print("[System] Error: captured_images/object.png does not exist.")
-        screen.fill(COLOR_BG_GAME)
+        title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
+        msg_font = pygame.font.SysFont("Helvetica", 16)
+        
+        screen.blit(bg_snap, (0, 0))
+        overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((10, 12, 16, 200))
+        screen.blit(overlay, (0, 0))
+        
         err_title = title_font.render("IMAGE NOT FOUND", True, COLOR_RED)
         err_msg = msg_font.render("Place your image at captured_images/object.png first.", True, COLOR_TEXT)
         screen.blit(err_title, (GAME_WIDTH // 2 - err_title.get_width() // 2, 250))
@@ -263,16 +310,14 @@ def run_extract_only_process(screen, font) -> bool:
         pygame.time.wait(3000)
         return False
 
-    try:
-        print("[System] Launching extractor.py...")
-        res_ext = subprocess.run([sys.executable, "extractor.py"], check=False)
-        if res_ext.returncode != 0:
-            print("[System] Extraction process was cancelled or failed.")
-            return False
-        return True
-    except Exception as e:
-        print(f"[System] Failed to invoke extractor.py: {e}")
-        return False
+    print("[System] Launching extractor.py...")
+    cmd_ext = [sys.executable, "extractor.py"]
+    success = run_subprocess_with_pygame_loop(
+        cmd_ext, screen, bg_snap, 
+        "EXTRACTING LOCAL IMAGE...", 
+        "Drag mouse to trace contour on OpenCV popup window."
+    )
+    return success
 
 
 def run_batch_extract_process(screen, font) -> bool:
@@ -281,6 +326,8 @@ def run_batch_extract_process(screen, font) -> bool:
     extractor.py を起動して一括で手動抽出を行う。
     成功した画像は元のraw_stockから削除し、途中でキャンセル(q)された場合はループを抜ける。
     """
+    bg_snap = screen.copy()
+    
     if not os.path.exists(RAW_STOCK_DIR):
         os.makedirs(RAW_STOCK_DIR, exist_ok=True)
 
@@ -293,7 +340,12 @@ def run_batch_extract_process(screen, font) -> bool:
     if not raw_files:
         title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
         msg_font = pygame.font.SysFont("Helvetica", 16)
-        screen.fill(COLOR_BG_GAME)
+        
+        screen.blit(bg_snap, (0, 0))
+        overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((10, 12, 16, 200))
+        screen.blit(overlay, (0, 0))
+        
         err_title = title_font.render("NO RAW IMAGES FOUND", True, COLOR_RED)
         err_msg = msg_font.render(f"Please place raw images in '{RAW_STOCK_DIR}/' first.", True, COLOR_TEXT)
         screen.blit(err_title, (GAME_WIDTH // 2 - err_title.get_width() // 2, 250))
@@ -302,20 +354,8 @@ def run_batch_extract_process(screen, font) -> bool:
         pygame.time.wait(3000)
         return False
 
-    title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
-    msg_font = pygame.font.SysFont("Helvetica", 16)
-
     total_files = len(raw_files)
     for idx, filename in enumerate(raw_files):
-        screen.fill(COLOR_BG_GAME)
-        txt_title = title_font.render(f"BATCH EXTRACTING ({idx + 1} / {total_files})...", True, COLOR_ACCENT)
-        txt_msg = msg_font.render(f"Processing: {filename}", True, COLOR_TEXT)
-        txt_hint = msg_font.render("Press 'e' to save, or 'q' to cancel all remaining.", True, COLOR_TEXT_MUTED)
-        screen.blit(txt_title, (GAME_WIDTH // 2 - txt_title.get_width() // 2, 220))
-        screen.blit(txt_msg, (GAME_WIDTH // 2 - txt_msg.get_width() // 2, 270))
-        screen.blit(txt_hint, (GAME_WIDTH // 2 - txt_hint.get_width() // 2, 320))
-        pygame.display.flip()
-
         src_path = os.path.join(RAW_STOCK_DIR, filename)
         temp_input = "captured_images/object.png"
         temp_output = "captured_images/extracted_object.png"
@@ -326,34 +366,35 @@ def run_batch_extract_process(screen, font) -> bool:
             print(f"[System] Failed to copy {filename}: {e}")
             continue
 
-        try:
-            print(f"[System] Launching extractor.py for {filename}...")
-            res_ext = subprocess.run([sys.executable, "extractor.py"], check=False)
-            if res_ext.returncode != 0:
-                print("[System] Batch extraction cancelled by user.")
-                if os.path.exists(temp_input):
-                    os.remove(temp_input)
-                break
-
-            if os.path.exists(temp_output):
-                timestamp = time.strftime("%Y%m%d_%H%M%S")
-                dest_filename = f"stock_{timestamp}_{idx}.png"
-                dest_path = os.path.join(STOCK_DIR, dest_filename)
-                shutil.copy(temp_output, dest_path)
-                print(f"[System] Saved to stock: {dest_path}")
-
-                if os.path.exists(src_path):
-                    os.remove(src_path)
-                    print(f"[System] Deleted raw source image: {src_path}")
-            
+        print(f"[System] Launching extractor.py for {filename}...")
+        cmd_ext = [sys.executable, "extractor.py"]
+        success = run_subprocess_with_pygame_loop(
+            cmd_ext, screen, bg_snap, 
+            f"BATCH EXTRACTING ({idx + 1} / {total_files})...", 
+            f"Processing: {filename}"
+        )
+        
+        if not success:
+            print("[System] Batch extraction cancelled by user.")
             if os.path.exists(temp_input):
                 os.remove(temp_input)
-            if os.path.exists(temp_output):
-                os.remove(temp_output)
-
-        except Exception as e:
-            print(f"[System] Error processing {filename}: {e}")
             break
+
+        if os.path.exists(temp_output):
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            dest_filename = f"stock_{timestamp}_{idx}.png"
+            dest_path = os.path.join(STOCK_DIR, dest_filename)
+            shutil.copy(temp_output, dest_path)
+            print(f"[System] Saved to stock: {dest_path}")
+
+            if os.path.exists(src_path):
+                os.remove(src_path)
+                print(f"[System] Deleted raw source image: {src_path}")
+        
+        if os.path.exists(temp_input):
+            os.remove(temp_input)
+        if os.path.exists(temp_output):
+            os.remove(temp_output)
 
     return True
 
