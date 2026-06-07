@@ -104,20 +104,17 @@ def main():
     save_dir = "captured_images"
     os.makedirs(save_dir, exist_ok=True)
     
-    bg_path = os.path.join(save_dir, "background.png")
     obj_path = os.path.join(save_dir, "object.png")
     
     camera = ManualADBCamera()
     
     # 状態管理定数
-    STATE_WAITING_BG = 0
-    STATE_WAITING_OBJ = 1
-    STATE_CAPTURED_BOTH = 2
+    STATE_WAITING_OBJ = 0
+    STATE_CAPTURED_OBJ = 1
     
-    state = STATE_WAITING_BG
+    state = STATE_WAITING_OBJ
     
     # 前回のファイルを念のためクリア
-    if os.path.exists(bg_path): os.remove(bg_path)
     if os.path.exists(obj_path): os.remove(obj_path)
     
     # 撮影前のフォルダの初期状態を取得
@@ -126,11 +123,10 @@ def main():
     print("\n=======================================================")
     print("【操作方法】")
     print("  1. スマホでカメラアプリを起動し、構図を合わせます。")
-    print("  2. スマホでシャッターを押して撮影してください:")
-    print("     - 1枚目: 背景のみの画像を撮影")
-    print("     - 2枚目: 物体を置いた画像を撮影")
-    print("  3. 両方撮影後、PC側でキーを押します:")
-    print("     - E キー : 2枚の画像で確定して終了 (物体抽出へ)")
+    print("  2. スマホでシャッターを押して物体画像を撮影してください:")
+    print("     - 1枚のみ: 物体を置いた画像を撮影")
+    print("  3. 撮影後、PC側でキーを押します:")
+    print("     - E キー : 画像で確定して終了 (物体抽出へ)")
     print("     - R キー : 画像をクリアし、最初から撮り直し")
     print("     - Q キー : プログラムの終了 (中断)")
     print("  ※ 撮影された画像はPC転送後、スマホから自動的に削除されます。")
@@ -146,7 +142,7 @@ def main():
         cv2.putText(img, "Press Q to Quit", (30, 440), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
         return img
 
-    cv2.imshow("Captured Photo Preview", make_instruction_image("1. Shoot BACKGROUND on phone..."))
+    cv2.imshow("Captured Photo Preview", make_instruction_image("1. Shoot OBJECT on phone..."))
     
     try:
         while True:
@@ -161,22 +157,21 @@ def main():
             # Rキーでリセット (撮り直し)
             elif key == ord('r') or key == ord('R'):
                 print("\n画像をクリアし、最初から撮り直します。")
-                if os.path.exists(bg_path): os.remove(bg_path)
                 if os.path.exists(obj_path): os.remove(obj_path)
-                state = STATE_WAITING_BG
+                state = STATE_WAITING_OBJ
                 before_state = camera.get_all_latest_files()
-                cv2.imshow("Captured Photo Preview", make_instruction_image("1. Shoot BACKGROUND on phone..."))
+                cv2.imshow("Captured Photo Preview", make_instruction_image("1. Shoot OBJECT on phone..."))
                 
-            # Eキーで確定して次のステップへ (両方撮影済みの場合のみ)
+            # Eキーで確定して次のステップへ (撮影済みの場合のみ)
             elif key == ord('e') or key == ord('E'):
-                if state == STATE_CAPTURED_BOTH:
-                    print("\n2枚の画像を確定しました。撮影ステップを完了します。")
+                if state == STATE_CAPTURED_OBJ:
+                    print("\n物体画像を確定しました。撮影ステップを完了します。")
                     sys.exit(0) # 正常終了
                 else:
                     print("\n警告: まだ撮影が完了していません。Eキーによる確定はできません。")
             
             # スマホ撮影の自動監視
-            if state == STATE_WAITING_BG:
+            if state == STATE_WAITING_OBJ:
                 current_state = camera.get_all_latest_files()
                 new_file = None
                 for directory, current_file in current_state.items():
@@ -186,50 +181,21 @@ def main():
                 
                 if new_file:
                     try:
-                        print(f"\n【検知】背景画像の撮影を確認しました。PCへ転送中...")
-                        camera.pull_and_delete_image(new_file, bg_path)
-                        state = STATE_WAITING_OBJ
-                        
-                        # プレビューの更新
-                        img = cv2.imread(bg_path)
-                        if img is not None:
-                            h, w = img.shape[:2]
-                            resized = cv2.resize(img, (640, int(640 * h / w)))
-                            cv2.putText(resized, "BACKGROUND OK. Next: Shoot OBJECT on phone...", (10, 30), 
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                            cv2.imshow("Captured Photo Preview", resized)
-                            
-                        # 物体撮影に向けて撮影前の状態を再取得
-                        before_state = camera.get_all_latest_files()
-                    except Exception as e:
-                        logging.error(f"背景画像の処理中にエラーが発生しました: {e}")
-                        before_state = camera.get_all_latest_files() # 状態を元に戻す
-                        
-            elif state == STATE_WAITING_OBJ:
-                current_state = camera.get_all_latest_files()
-                new_file = None
-                for directory, current_file in current_state.items():
-                    if directory not in before_state or before_state[directory] != current_file:
-                        new_file = os.path.join(directory, current_file)
-                        break
-                        
-                if new_file:
-                    try:
                         print(f"\n【検知】物体画像の撮影を確認しました。PCへ転送中...")
                         camera.pull_and_delete_image(new_file, obj_path)
-                        state = STATE_CAPTURED_BOTH
+                        state = STATE_CAPTURED_OBJ
                         
                         # プレビューの更新
                         img = cv2.imread(obj_path)
                         if img is not None:
                             h, w = img.shape[:2]
                             resized = cv2.resize(img, (640, int(640 * h / w)))
-                            cv2.putText(resized, "BOTH CAPTURED. Press E to Confirm, R to Retry", (10, 30), 
+                            cv2.putText(resized, "OBJECT CAPTURED. Press E to Confirm, R to Retry", (10, 30), 
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                             cv2.imshow("Captured Photo Preview", resized)
                     except Exception as e:
                         logging.error(f"物体画像の処理中にエラーが発生しました: {e}")
-                        before_state = camera.get_all_latest_files()
+                        before_state = camera.get_all_latest_files() # 状態を元に戻す
                         
     except KeyboardInterrupt:
         print("\n中断されました。")
