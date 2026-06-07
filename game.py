@@ -285,41 +285,6 @@ def run_capture_and_extract_processes(screen, font) -> bool:
     return True
 
 
-def run_extract_only_process(screen, font) -> bool:
-    """
-    capture.py をスキップし、extractor.py のみを外部プロセスとして直接呼び出す。
-    """
-    bg_snap = screen.copy()
-    
-    # 入力画像の存在確認
-    if not os.path.exists("captured_images/object.png"):
-        print("[System] Error: captured_images/object.png does not exist.")
-        title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
-        msg_font = pygame.font.SysFont("Helvetica", 16)
-        
-        screen.blit(bg_snap, (0, 0))
-        overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
-        overlay.fill((10, 12, 16, 200))
-        screen.blit(overlay, (0, 0))
-        
-        err_title = title_font.render("IMAGE NOT FOUND", True, COLOR_RED)
-        err_msg = msg_font.render("Place your image at captured_images/object.png first.", True, COLOR_TEXT)
-        screen.blit(err_title, (GAME_WIDTH // 2 - err_title.get_width() // 2, 250))
-        screen.blit(err_msg, (GAME_WIDTH // 2 - err_msg.get_width() // 2, 300))
-        pygame.display.flip()
-        pygame.time.wait(3000)
-        return False
-
-    print("[System] Launching extractor.py...")
-    cmd_ext = [sys.executable, "extractor.py"]
-    success = run_subprocess_with_pygame_loop(
-        cmd_ext, screen, bg_snap, 
-        "EXTRACTING LOCAL IMAGE...", 
-        "Drag mouse to trace contour on OpenCV popup window."
-    )
-    return success
-
-
 def run_batch_extract_process(screen, font) -> bool:
     """
     captured_images/raw_stock/ 内の画像を順次 object.png にコピーし、
@@ -680,7 +645,7 @@ def main():
 
                 elif game_state == STATE_STOCK_MANAGER:
                     # ボタンA: スマホ撮影＋抽出
-                    if pygame.Rect(50, 40, 240, 35).collidepoint(mouse_pos):
+                    if pygame.Rect(50, 60, 240, 40).collidepoint(mouse_pos):
                         success = run_capture_and_extract_processes(screen, font_main)
                         if success:
                             # タイムスタンプ名でストックに保存
@@ -692,21 +657,8 @@ def main():
                                 print(f"Saved to stock: {dest_path}")
                                 refresh_stock_list()
                                 
-                    # ボタンB: 既存画像から抽出 (スマホ撮影をスキップ)
-                    elif pygame.Rect(310, 40, 240, 35).collidepoint(mouse_pos):
-                        success = run_extract_only_process(screen, font_main)
-                        if success:
-                            # タイムスタンプ名でストックに保存
-                            temp_path = "captured_images/extracted_object.png"
-                            if os.path.exists(temp_path):
-                                timestamp = time.strftime("%Y%m%d_%H%M%S")
-                                dest_path = os.path.join(STOCK_DIR, f"stock_{timestamp}.png")
-                                shutil.copy(temp_path, dest_path)
-                                print(f"Saved to stock: {dest_path}")
-                                refresh_stock_list()
-
-                    # ボタンC: 一括抽出 (raw_stock内の画像から順次抽出)
-                    elif pygame.Rect(50, 85, 500, 35).collidepoint(mouse_pos):
+                    # ボタンB: 一括抽出 (raw_stock内の画像から順次抽出)
+                    elif pygame.Rect(310, 60, 240, 40).collidepoint(mouse_pos):
                         success = run_batch_extract_process(screen, font_main)
                         if success:
                             refresh_stock_list()
@@ -862,25 +814,18 @@ def main():
         # B. STOCK_MANAGER 画面
         elif game_state == STATE_STOCK_MANAGER:
             # ボタンA: スマホ撮影＋抽出
-            btn_a = pygame.Rect(50, 40, 240, 35)
+            btn_a = pygame.Rect(50, 60, 240, 40)
             pygame.draw.rect(screen, (0, 150, 136), btn_a, border_radius=5)
             pygame.draw.rect(screen, (255, 255, 255), btn_a, 1, border_radius=5)
             txt_a = font_main.render("+ SHOOT & EXTRACT", True, COLOR_TEXT)
             screen.blit(txt_a, (btn_a.centerx - txt_a.get_width() // 2, btn_a.centery - txt_a.get_height() // 2))
 
-            # ボタンB: 既存画像から抽出
-            btn_b = pygame.Rect(310, 40, 240, 35)
-            pygame.draw.rect(screen, (40, 80, 115), btn_b, border_radius=5)
+            # ボタンB: 一括抽出 (raw_stock内の画像から順次抽出)
+            btn_b = pygame.Rect(310, 60, 240, 40)
+            pygame.draw.rect(screen, (100, 80, 140), btn_b, border_radius=5)
             pygame.draw.rect(screen, (255, 255, 255), btn_b, 1, border_radius=5)
-            txt_b = font_main.render("+ EXTRACT LOCAL (object.png)", True, COLOR_TEXT)
+            txt_b = font_main.render("+ BATCH EXTRACT (raw_stock/)", True, COLOR_TEXT)
             screen.blit(txt_b, (btn_b.centerx - txt_b.get_width() // 2, btn_b.centery - txt_b.get_height() // 2))
-
-            # ボタンC: 一括抽出
-            btn_c = pygame.Rect(50, 85, 500, 35)
-            pygame.draw.rect(screen, (100, 80, 140), btn_c, border_radius=5)
-            pygame.draw.rect(screen, (255, 255, 255), btn_c, 1, border_radius=5)
-            txt_c = font_main.render("+ BATCH EXTRACT FROM raw_stock/ FOLDER", True, COLOR_TEXT)
-            screen.blit(txt_c, (btn_c.centerx - txt_c.get_width() // 2, btn_c.centery - txt_c.get_height() // 2))
             
             # グリッド描画 (最大6つ)
             cols = 3
