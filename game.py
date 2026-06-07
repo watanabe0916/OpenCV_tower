@@ -33,6 +33,8 @@ COLLISION_TYPE_SENSOR = 2
 # ディレクトリパス
 STOCK_DIR = "captured_images/stock"
 os.makedirs(STOCK_DIR, exist_ok=True)
+RAW_STOCK_DIR = "captured_images/raw_stock"
+os.makedirs(RAW_STOCK_DIR, exist_ok=True)
 
 # -------------------------------------------------------------
 # スライダークラス (PygameによるカスタムGUI)
@@ -235,14 +237,139 @@ def run_capture_and_extract_processes(screen, font) -> bool:
         return False
 
 
+def run_extract_only_process(screen, font) -> bool:
+    """
+    capture.py をスキップし、extractor.py のみを外部プロセスとして直接呼び出す。
+    """
+    screen.fill(COLOR_BG_GAME)
+    title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
+    msg_font = pygame.font.SysFont("Helvetica", 16)
+    
+    txt_title = title_font.render("EXTRACTING LOCAL IMAGE...", True, COLOR_ACCENT)
+    txt_msg = msg_font.render("Processing captured_images/object.png", True, COLOR_TEXT)
+    screen.blit(txt_title, (GAME_WIDTH // 2 - txt_title.get_width() // 2, 250))
+    screen.blit(txt_msg, (GAME_WIDTH // 2 - txt_msg.get_width() // 2, 300))
+    pygame.display.flip()
+    
+    # 入力画像の存在確認
+    if not os.path.exists("captured_images/object.png"):
+        print("[System] Error: captured_images/object.png does not exist.")
+        screen.fill(COLOR_BG_GAME)
+        err_title = title_font.render("IMAGE NOT FOUND", True, COLOR_RED)
+        err_msg = msg_font.render("Place your image at captured_images/object.png first.", True, COLOR_TEXT)
+        screen.blit(err_title, (GAME_WIDTH // 2 - err_title.get_width() // 2, 250))
+        screen.blit(err_msg, (GAME_WIDTH // 2 - err_msg.get_width() // 2, 300))
+        pygame.display.flip()
+        pygame.time.wait(3000)
+        return False
+
+    try:
+        print("[System] Launching extractor.py...")
+        res_ext = subprocess.run([sys.executable, "extractor.py"], check=False)
+        if res_ext.returncode != 0:
+            print("[System] Extraction process was cancelled or failed.")
+            return False
+        return True
+    except Exception as e:
+        print(f"[System] Failed to invoke extractor.py: {e}")
+        return False
+
+
+def run_batch_extract_process(screen, font) -> bool:
+    """
+    captured_images/raw_stock/ 内の画像を順次 object.png にコピーし、
+    extractor.py を起動して一括で手動抽出を行う。
+    成功した画像は元のraw_stockから削除し、途中でキャンセル(q)された場合はループを抜ける。
+    """
+    if not os.path.exists(RAW_STOCK_DIR):
+        os.makedirs(RAW_STOCK_DIR, exist_ok=True)
+
+    valid_exts = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
+    raw_files = sorted([
+        f for f in os.listdir(RAW_STOCK_DIR)
+        if f.lower().endswith(valid_exts)
+    ])
+
+    if not raw_files:
+        title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
+        msg_font = pygame.font.SysFont("Helvetica", 16)
+        screen.fill(COLOR_BG_GAME)
+        err_title = title_font.render("NO RAW IMAGES FOUND", True, COLOR_RED)
+        err_msg = msg_font.render(f"Please place raw images in '{RAW_STOCK_DIR}/' first.", True, COLOR_TEXT)
+        screen.blit(err_title, (GAME_WIDTH // 2 - err_title.get_width() // 2, 250))
+        screen.blit(err_msg, (GAME_WIDTH // 2 - err_msg.get_width() // 2, 300))
+        pygame.display.flip()
+        pygame.time.wait(3000)
+        return False
+
+    title_font = pygame.font.SysFont("Helvetica", 24, bold=True)
+    msg_font = pygame.font.SysFont("Helvetica", 16)
+
+    total_files = len(raw_files)
+    for idx, filename in enumerate(raw_files):
+        screen.fill(COLOR_BG_GAME)
+        txt_title = title_font.render(f"BATCH EXTRACTING ({idx + 1} / {total_files})...", True, COLOR_ACCENT)
+        txt_msg = msg_font.render(f"Processing: {filename}", True, COLOR_TEXT)
+        txt_hint = msg_font.render("Press 'e' to save, or 'q' to cancel all remaining.", True, COLOR_TEXT_MUTED)
+        screen.blit(txt_title, (GAME_WIDTH // 2 - txt_title.get_width() // 2, 220))
+        screen.blit(txt_msg, (GAME_WIDTH // 2 - txt_msg.get_width() // 2, 270))
+        screen.blit(txt_hint, (GAME_WIDTH // 2 - txt_hint.get_width() // 2, 320))
+        pygame.display.flip()
+
+        src_path = os.path.join(RAW_STOCK_DIR, filename)
+        temp_input = "captured_images/object.png"
+        temp_output = "captured_images/extracted_object.png"
+
+        try:
+            shutil.copy(src_path, temp_input)
+        except Exception as e:
+            print(f"[System] Failed to copy {filename}: {e}")
+            continue
+
+        try:
+            print(f"[System] Launching extractor.py for {filename}...")
+            res_ext = subprocess.run([sys.executable, "extractor.py"], check=False)
+            if res_ext.returncode != 0:
+                print("[System] Batch extraction cancelled by user.")
+                if os.path.exists(temp_input):
+                    os.remove(temp_input)
+                break
+
+            if os.path.exists(temp_output):
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                dest_filename = f"stock_{timestamp}_{idx}.png"
+                dest_path = os.path.join(STOCK_DIR, dest_filename)
+                shutil.copy(temp_output, dest_path)
+                print(f"[System] Saved to stock: {dest_path}")
+
+                if os.path.exists(src_path):
+                    os.remove(src_path)
+                    print(f"[System] Deleted raw source image: {src_path}")
+            
+            if os.path.exists(temp_input):
+                os.remove(temp_input)
+            if os.path.exists(temp_output):
+                os.remove(temp_output)
+
+        except Exception as e:
+            print(f"[System] Error processing {filename}: {e}")
+            break
+
+    return True
+
+
+
 # -------------------------------------------------------------
 # 物理オブジェクトの生成
 # -------------------------------------------------------------
-def spawn_physics_object(space, vertices, x, y, angle_deg, friction, elasticity, mass=1.0) -> tuple[pymunk.Body, pymunk.Shape]:
+def spawn_physics_object(space, vertices, x, y, angle_deg, friction, elasticity, image_surf, mass=1.0) -> tuple[pymunk.Body, pymunk.Shape]:
     moment = pymunk.moment_for_poly(mass, vertices)
     body = pymunk.Body(mass, moment, body_type=pymunk.Body.DYNAMIC)
     body.position = (x, y)
     body.angle = math.radians(-angle_deg)
+    
+    # 描画用の個別画像テクスチャを物理ボディにバインド
+    body.custom_image = image_surf
     
     shape = pymunk.Poly(body, vertices)
     shape.friction = friction
@@ -485,7 +612,7 @@ def main():
                         
                         active_body, active_shape = spawn_physics_object(
                             space, current_object_vertices, obj_x, obj_y, obj_angle,
-                            friction, elasticity
+                            friction, elasticity, current_object_image
                         )
 
             # マウスクリック判定 (STATE_MODE_SELECT と STATE_STOCK_MANAGER のみ)
@@ -511,8 +638,8 @@ def main():
                         game_state = STATE_STOCK_MANAGER
 
                 elif game_state == STATE_STOCK_MANAGER:
-                    # 新規登録ボタン: (100, 60, 400, 40)
-                    if pygame.Rect(100, 60, 400, 40).collidepoint(mouse_pos):
+                    # ボタンA: スマホ撮影＋抽出
+                    if pygame.Rect(50, 40, 240, 35).collidepoint(mouse_pos):
                         success = run_capture_and_extract_processes(screen, font_main)
                         if success:
                             # タイムスタンプ名でストックに保存
@@ -523,6 +650,25 @@ def main():
                                 shutil.copy(temp_path, dest_path)
                                 print(f"Saved to stock: {dest_path}")
                                 refresh_stock_list()
+                                
+                    # ボタンB: 既存画像から抽出 (スマホ撮影をスキップ)
+                    elif pygame.Rect(310, 40, 240, 35).collidepoint(mouse_pos):
+                        success = run_extract_only_process(screen, font_main)
+                        if success:
+                            # タイムスタンプ名でストックに保存
+                            temp_path = "captured_images/extracted_object.png"
+                            if os.path.exists(temp_path):
+                                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                                dest_path = os.path.join(STOCK_DIR, f"stock_{timestamp}.png")
+                                shutil.copy(temp_path, dest_path)
+                                print(f"Saved to stock: {dest_path}")
+                                refresh_stock_list()
+
+                    # ボタンC: 一括抽出 (raw_stock内の画像から順次抽出)
+                    elif pygame.Rect(50, 85, 500, 35).collidepoint(mouse_pos):
+                        success = run_batch_extract_process(screen, font_main)
+                        if success:
+                            refresh_stock_list()
                                 
                     # 戻るボタン: (200, 535, 200, 40)
                     elif pygame.Rect(200, 535, 200, 40).collidepoint(mouse_pos):
@@ -674,12 +820,26 @@ def main():
 
         # B. STOCK_MANAGER 画面
         elif game_state == STATE_STOCK_MANAGER:
-            # 登録ボタン
-            reg_btn = pygame.Rect(100, 60, 400, 40)
-            pygame.draw.rect(screen, (0, 150, 136), reg_btn, border_radius=5)
-            pygame.draw.rect(screen, (255, 255, 255), reg_btn, 1, border_radius=5)
-            txt_reg = font_large.render("+ REGISTER NEW OBJECT", True, COLOR_TEXT)
-            screen.blit(txt_reg, (GAME_WIDTH // 2 - txt_reg.get_width() // 2, 68))
+            # ボタンA: スマホ撮影＋抽出
+            btn_a = pygame.Rect(50, 40, 240, 35)
+            pygame.draw.rect(screen, (0, 150, 136), btn_a, border_radius=5)
+            pygame.draw.rect(screen, (255, 255, 255), btn_a, 1, border_radius=5)
+            txt_a = font_main.render("+ SHOOT & EXTRACT", True, COLOR_TEXT)
+            screen.blit(txt_a, (btn_a.centerx - txt_a.get_width() // 2, btn_a.centery - txt_a.get_height() // 2))
+
+            # ボタンB: 既存画像から抽出
+            btn_b = pygame.Rect(310, 40, 240, 35)
+            pygame.draw.rect(screen, (40, 80, 115), btn_b, border_radius=5)
+            pygame.draw.rect(screen, (255, 255, 255), btn_b, 1, border_radius=5)
+            txt_b = font_main.render("+ EXTRACT LOCAL (object.png)", True, COLOR_TEXT)
+            screen.blit(txt_b, (btn_b.centerx - txt_b.get_width() // 2, btn_b.centery - txt_b.get_height() // 2))
+
+            # ボタンC: 一括抽出
+            btn_c = pygame.Rect(50, 85, 500, 35)
+            pygame.draw.rect(screen, (100, 80, 140), btn_c, border_radius=5)
+            pygame.draw.rect(screen, (255, 255, 255), btn_c, 1, border_radius=5)
+            txt_c = font_main.render("+ BATCH EXTRACT FROM raw_stock/ FOLDER", True, COLOR_TEXT)
+            screen.blit(txt_c, (btn_c.centerx - txt_c.get_width() // 2, btn_c.centery - txt_c.get_height() // 2))
             
             # グリッド描画 (最大6つ)
             cols = 3
@@ -772,10 +932,12 @@ def main():
                     pos = body.position
                     angle_deg = -math.degrees(body.angle)
                     
-                    rotated_image = pygame.transform.rotate(current_object_image, angle_deg)
-                    rotated_rect = rotated_image.get_rect(center=(int(pos.x), int(pos.y)))
-                    
-                    screen.blit(rotated_image, rotated_rect.topleft)
+                    # 各ボディに紐づけられた固有の画像で描画
+                    img_to_draw = getattr(body, "custom_image", current_object_image)
+                    if img_to_draw is not None:
+                        rotated_image = pygame.transform.rotate(img_to_draw, angle_deg)
+                        rotated_rect = rotated_image.get_rect(center=(int(pos.x), int(pos.y)))
+                        screen.blit(rotated_image, rotated_rect.topleft)
 
             # 落下前に操作中のエイミングオブジェクト描画
             if game_state == STATE_AIMING and object_prepared:
