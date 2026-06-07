@@ -200,4 +200,4 @@ if __name__ == "__main__":
     OBJ_FILE = "captured_images/object.png"
     OUTPUT_FILE = "captured_images/extracted_object.png"
 
-    extract_object_by_freehand_zoom(OBJ_FILE, OUTPUT_FILE, target_size=150)
+    extract_object_by_freehand_zoom(OBJ_FILE, OUTPUT_FILE, target_size=100)
