@@ -1,4 +1,3 @@
 opencv-python
 pygame
 pymunk
-python-dotenv
