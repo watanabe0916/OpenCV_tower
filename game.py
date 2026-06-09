@@ -459,6 +459,7 @@ def main():
     active_body = None
     active_shape = None
     falling_frames = 0
+    stopped_frames = 0
 
     # 現在ターンのオブジェクトデータ
     current_object_image = None
@@ -482,7 +483,7 @@ def main():
 
     # 物理クリア
     def reset_game_physics():
-        nonlocal active_body, active_shape, falling_frames, object_prepared
+        nonlocal active_body, active_shape, falling_frames, stopped_frames, object_prepared
         for b in [body for body in space.bodies if body != stage_body and body != sensor_body]:
             for s in b.shapes:
                 space.remove(s)
@@ -490,6 +491,7 @@ def main():
         active_body = None
         active_shape = None
         falling_frames = 0
+        stopped_frames = 0
         object_prepared = False
 
     # モード3用のストックリスト読み込み
@@ -627,6 +629,7 @@ def main():
                         # 落下開始
                         game_state = STATE_FALLING
                         falling_frames = 0
+                        stopped_frames = 0
                         
                         friction = slider_friction.val
                         elasticity = slider_elasticity.val
@@ -773,9 +776,20 @@ def main():
         if game_state == STATE_FALLING and active_body is not None:
             falling_frames += 1
             if falling_frames > 60:
-                vel = active_body.velocity.length
-                ang = abs(active_body.angular_velocity)
-                if vel < 1.5 and ang < 0.05:
+                # 全ての落下オブジェクトが静止しているか判定（タワー全体の揺れも考慮）
+                all_stopped = True
+                for b in space.bodies:
+                    if b.body_type == pymunk.Body.DYNAMIC:
+                        if b.velocity.length > 1.0 or abs(b.angular_velocity) > 0.02:
+                            all_stopped = False
+                            break
+                
+                if all_stopped:
+                    stopped_frames += 1
+                else:
+                    stopped_frames = 0
+
+                if stopped_frames >= 30: # 0.5秒間連続で停止
                     # 積み上げ成功: 次のターンへ
                     score += 1
                     game_state = STATE_AIMING
@@ -785,6 +799,7 @@ def main():
                     active_body = None
                     active_shape = None
                     falling_frames = 0
+                    stopped_frames = 0
                     object_prepared = False # 次の画像を要求
 
         # -------------------------------------------------------------
