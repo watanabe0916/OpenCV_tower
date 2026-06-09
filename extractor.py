@@ -57,8 +57,8 @@ def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size
     global WIN_W, WIN_H
     img_h, img_w = img_obj.shape[:2]
     
-    # ウィンドウサイズの最大上限（PC画面に収まる程度）
-    MAX_WIN_W, MAX_WIN_H = 1000, 800
+    # ウィンドウサイズの最大上限（ノートPCなどの画面にも確実に収まる程度）
+    MAX_WIN_W, MAX_WIN_H = 800, 600
     
     # アスペクト比を維持しつつウィンドウサイズを決定
     if img_w > MAX_WIN_W or img_h > MAX_WIN_H:
@@ -68,14 +68,14 @@ def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size
     else:
         WIN_W, WIN_H = img_w, img_h
     
-    # 全体がウィンドウに収まるように初期スケールを設定
-    scale = WIN_W / img_w
+    # 全体がウィンドウに収まるように初期スケールを厳密に設定
+    scale = min(WIN_W / img_w, WIN_H / img_h)
     offset_x = 0
     offset_y = 0
     current_stroke = []
 
-    # 元画像のサイズに合わせて自動でウィンドウが生成されるようにフラグを変更
-    cv2.namedWindow("Freehand Tracing (Zoom: Up/Down Arrow)", cv2.WINDOW_AUTOSIZE)
+    # ユーザーが自由にウィンドウサイズを調整できるようにフラグを変更
+    cv2.namedWindow("Freehand Tracing (Zoom: Up/Down Arrow)", cv2.WINDOW_NORMAL)
     cv2.setMouseCallback("Freehand Tracing (Zoom: Up/Down Arrow)", mouse_callback)
 
     print("【操作方法】")
