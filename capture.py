@@ -189,7 +189,7 @@ def main():
                         img = cv2.imread(obj_path)
                         if img is not None:
                             h, w = img.shape[:2]
-                            resized = cv2.resize(img, (640, int(640 * h / w)))
+                            resized = cv2.resize(img, (640, int(640 * h / w)), interpolation=cv2.INTER_AREA)
                             cv2.putText(resized, "OBJECT CAPTURED. Press E to Confirm, R to Retry", (10, 30), 
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                             cv2.imshow("Captured Photo Preview", resized)

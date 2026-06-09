@@ -41,7 +41,7 @@ def mouse_callback(event, x, y, flags, param):
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
 
-def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size: int = 1000) -> bool:
+def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size: int = 2000) -> bool:
     """ユーザーがズーム操作を交えながらフリーハンドで囲んだ領域の内側のみを透過抽出する"""
     global scale, offset_x, offset_y, mouse_x, mouse_y, current_stroke
 
@@ -102,7 +102,9 @@ def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size
         offset_y = max(0, min(offset_y, img_h - crop_h))
 
         img_crop = img_canvas[offset_y:offset_y+crop_h, offset_x:offset_x+crop_w]
-        img_display = cv2.resize(img_crop, (WIN_W, WIN_H), interpolation=cv2.INTER_LINEAR)
+        # 縮小表示時は INTER_AREA を使い、拡大表示時は INTER_LINEAR を使うことで画質劣化を防ぐ
+        interp_method = cv2.INTER_AREA if crop_w > WIN_W else cv2.INTER_LINEAR
+        img_display = cv2.resize(img_crop, (WIN_W, WIN_H), interpolation=interp_method)
 
         # 解像度に比例した動的スケーリング (基準幅 1000px)
         scale_ratio = max(0.5, WIN_W / 1000.0)
@@ -208,4 +210,4 @@ if __name__ == "__main__":
     OBJ_FILE = "captured_images/object.png"
     OUTPUT_FILE = "captured_images/extracted_object.png"
 
-    extract_object_by_freehand_zoom(OBJ_FILE, OUTPUT_FILE, target_size=1000)
+    extract_object_by_freehand_zoom(OBJ_FILE, OUTPUT_FILE, target_size=2000)

@@ -519,7 +519,7 @@ def main():
                     vertices, (cx, cy), (w, h) = load_object_vertices(target_path)
                     
                     # --- 高画質のままサイズを1/5に縮小する処理 ---
-                    scale_factor = 0.1  # 1/5
+                    scale_factor = 0.05  # 1/20
                     new_w, new_h = max(1, int(w * scale_factor)), max(1, int(h * scale_factor))
                     raw_img = pygame.transform.smoothscale(raw_img, (new_w, new_h))
                     vertices = [(vx * scale_factor, vy * scale_factor) for vx, vy in vertices]
