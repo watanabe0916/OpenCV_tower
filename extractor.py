@@ -41,7 +41,7 @@ def mouse_callback(event, x, y, flags, param):
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
 
-def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size: int = 250) -> bool:
+def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size: int = 1000) -> bool:
     """ユーザーがズーム操作を交えながらフリーハンドで囲んだ領域の内側のみを透過抽出する"""
     global scale, offset_x, offset_y, mouse_x, mouse_y, current_stroke
 
@@ -57,11 +57,19 @@ def extract_object_by_freehand_zoom(obj_path: str, output_path: str, target_size
     global WIN_W, WIN_H
     img_h, img_w = img_obj.shape[:2]
     
-    # ウィンドウサイズを元の画像サイズと完全に一致させる
-    WIN_W, WIN_H = img_w, img_h
+    # ウィンドウサイズの最大上限（PC画面に収まる程度）
+    MAX_WIN_W, MAX_WIN_H = 1000, 800
     
-    # 初期状態の表示スケールを等倍（1.0）に設定
-    scale = 1.0
+    # アスペクト比を維持しつつウィンドウサイズを決定
+    if img_w > MAX_WIN_W or img_h > MAX_WIN_H:
+        initial_scale = min(MAX_WIN_W / img_w, MAX_WIN_H / img_h)
+        WIN_W = int(img_w * initial_scale)
+        WIN_H = int(img_h * initial_scale)
+    else:
+        WIN_W, WIN_H = img_w, img_h
+    
+    # 全体がウィンドウに収まるように初期スケールを設定
+    scale = WIN_W / img_w
     offset_x = 0
     offset_y = 0
     current_stroke = []
@@ -200,4 +208,4 @@ if __name__ == "__main__":
     OBJ_FILE = "captured_images/object.png"
     OUTPUT_FILE = "captured_images/extracted_object.png"
 
-    extract_object_by_freehand_zoom(OBJ_FILE, OUTPUT_FILE, target_size=100)
+    extract_object_by_freehand_zoom(OBJ_FILE, OUTPUT_FILE, target_size=1000)
