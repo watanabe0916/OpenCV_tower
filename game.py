@@ -734,17 +734,27 @@ def main():
         # -------------------------------------------------------------
         # 状態更新
         # -------------------------------------------------------------
-        # 土台の長さ・物理パラメータのリアルタイム更新 (操作中またはゲームオーバー時のみ変更可能)
+        # 物理パラメータのリアルタイム更新 (すべての動的オブジェクトと土台に即時反映)
+        current_friction = slider_friction.val
+        current_elasticity = slider_elasticity.val
+        
+        stage_shape.friction = current_friction
+        stage_shape.elasticity = current_elasticity
+        
+        for body in space.bodies:
+            if body.body_type == pymunk.Body.DYNAMIC:
+                for shape in body.shapes:
+                    shape.friction = current_friction
+                    shape.elasticity = current_elasticity
+
+        # 土台の長さのリアルタイム更新 (操作中またはゲームオーバー時のみ変更可能)
         if game_state in [STATE_AIMING, STATE_GAMEOVER]:
-            stage_shape.friction = slider_friction.val
-            stage_shape.elasticity = slider_elasticity.val
-            
             current_stage_w = slider_stage_width.val
             if abs(current_stage_w - last_stage_width) > 1.0:
                 space.remove(stage_shape)
                 stage_shape = pymunk.Poly.create_box(stage_body, (current_stage_w, 20))
-                stage_shape.friction = slider_friction.val
-                stage_shape.elasticity = slider_elasticity.val
+                stage_shape.friction = current_friction
+                stage_shape.elasticity = current_elasticity
                 space.add(stage_shape)
                 last_stage_width = current_stage_w
 
