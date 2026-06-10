@@ -14,7 +14,7 @@ import pymunk
 # 定数とカラー定義 (リッチで洗練されたダークテーマ)
 # -------------------------------------------------------------
 SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 600
+SCREEN_HEIGHT = 700
 GAME_WIDTH = 800
 
 # カラーパレット
@@ -984,7 +984,7 @@ def main():
 
             # デッドラインの視覚化 (薄い赤色の破線)
             for dash_x in range(0, GAME_WIDTH, 15):
-                pygame.draw.line(screen, (255, 82, 82, 100), (dash_x, 580), (dash_x + 8, 580), 1)
+                pygame.draw.line(screen, (255, 82, 82, 100), (dash_x, SCREEN_HEIGHT - 20), (dash_x + 8, SCREEN_HEIGHT - 20), 1)
 
         # -------------------------------------------------------------
         # 2. サイドパネル (ダッシュボードUI) の描画
