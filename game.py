@@ -412,7 +412,7 @@ def main():
     # UIスライダーの定義 (Friction / Elasticity / Stage Width)
     slider_friction = Slider(GAME_WIDTH + 20, 180, 160, 0.0, 1.0, 0.6, "Friction")
     slider_elasticity = Slider(GAME_WIDTH + 20, 240, 160, 0.0, 1.0, 0.2, "Elasticity")
-    slider_stage_width = Slider(GAME_WIDTH + 20, 300, 160, 100.0, 500.0, 300.0, "Stage Width")
+    slider_stage_width = Slider(GAME_WIDTH + 20, 300, 160, 300.0, 700.0, 500.0, "Stage Width")
     sliders = [slider_friction, slider_elasticity, slider_stage_width]
 
     # 物理空間 (PyMunk) の定義
@@ -519,7 +519,7 @@ def main():
                     vertices, (cx, cy), (w, h) = load_object_vertices(target_path)
                     
                     # --- 高画質のままサイズを1/5に縮小する処理 ---
-                    scale_factor = 0.05  # 1/20
+                    scale_factor = 0.1  # 1/10
                     new_w, new_h = max(1, int(w * scale_factor)), max(1, int(h * scale_factor))
                     raw_img = pygame.transform.smoothscale(raw_img, (new_w, new_h))
                     vertices = [(vx * scale_factor, vy * scale_factor) for vx, vy in vertices]
@@ -554,8 +554,8 @@ def main():
                 raw_img = pygame.image.load(selected_path).convert_alpha()
                 vertices, (cx, cy), (w, h) = load_object_vertices(selected_path)
                 
-                # --- 高画質のままサイズを1/20に縮小する処理 ---
-                scale_factor = 0.05  # 1/20
+                # --- 高画質のままサイズを1/10に縮小する処理 ---
+                scale_factor = 0.1  # 1/10
                 new_w, new_h = max(1, int(w * scale_factor)), max(1, int(h * scale_factor))
                 raw_img = pygame.transform.smoothscale(raw_img, (new_w, new_h))
                 vertices = [(vx * scale_factor, vy * scale_factor) for vx, vy in vertices]
