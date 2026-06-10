@@ -410,7 +410,7 @@ def main():
         font_title = pygame.font.Font(None, 40)
 
     # UIスライダーの定義 (Friction / Elasticity / Stage Width)
-    slider_friction = Slider(GAME_WIDTH + 20, 180, 160, 0.0, 1.0, 0.6, "Friction")
+    slider_friction = Slider(GAME_WIDTH + 20, 180, 160, 0.3, 2.0, 0.6, "Friction")
     slider_elasticity = Slider(GAME_WIDTH + 20, 240, 160, 0.0, 1.0, 0.2, "Elasticity")
     slider_stage_width = Slider(GAME_WIDTH + 20, 300, 160, 300.0, 700.0, 500.0, "Stage Width")
     sliders = [slider_friction, slider_elasticity, slider_stage_width]
