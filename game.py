@@ -13,9 +13,9 @@ import pymunk
 # -------------------------------------------------------------
 # 定数とカラー定義 (リッチで洗練されたダークテーマ)
 # -------------------------------------------------------------
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
-GAME_WIDTH = 600
+GAME_WIDTH = 800
 
 # カラーパレット
 COLOR_BG_GAME = (20, 24, 33)        # 深みのあるスペースグレー
@@ -410,9 +410,9 @@ def main():
         font_title = pygame.font.Font(None, 40)
 
     # UIスライダーの定義 (Friction / Elasticity / Stage Width)
-    slider_friction = Slider(620, 180, 160, 0.0, 1.0, 0.6, "Friction")
-    slider_elasticity = Slider(620, 240, 160, 0.0, 1.0, 0.2, "Elasticity")
-    slider_stage_width = Slider(620, 300, 160, 100.0, 500.0, 300.0, "Stage Width")
+    slider_friction = Slider(GAME_WIDTH + 20, 180, 160, 0.0, 1.0, 0.6, "Friction")
+    slider_elasticity = Slider(GAME_WIDTH + 20, 240, 160, 0.0, 1.0, 0.2, "Elasticity")
+    slider_stage_width = Slider(GAME_WIDTH + 20, 300, 160, 100.0, 500.0, 300.0, "Stage Width")
     sliders = [slider_friction, slider_elasticity, slider_stage_width]
 
     # 物理空間 (PyMunk) の定義
@@ -421,7 +421,7 @@ def main():
 
     # 土台 (静的ボディ) の配置
     stage_body = pymunk.Body(body_type=pymunk.Body.STATIC)
-    stage_body.position = (300, 480)
+    stage_body.position = (GAME_WIDTH // 2, SCREEN_HEIGHT - 120)
     stage_shape = pymunk.Poly.create_box(stage_body, (300.0, 20))
     stage_shape.friction = slider_friction.val
     stage_shape.elasticity = slider_elasticity.val
@@ -429,7 +429,7 @@ def main():
 
     # 静的センサー判定ライン (ゲームオーバー用デッドライン)
     sensor_body = pymunk.Body(body_type=pymunk.Body.STATIC)
-    sensor_body.position = (300, 580)
+    sensor_body.position = (GAME_WIDTH // 2, SCREEN_HEIGHT - 20)
     sensor_shape = pymunk.Poly.create_box(sensor_body, (20000, 10))
     sensor_shape.sensor = True
     sensor_shape.collision_type = COLLISION_TYPE_SENSOR
@@ -647,18 +647,18 @@ def main():
                 mouse_pos = event.pos
                 
                 if game_state == STATE_MODE_SELECT:
-                    # モードボタン1: (100, 150, 400, 90)
-                    if pygame.Rect(100, 150, 400, 90).collidepoint(mouse_pos):
+                    # モードボタン1: (GAME_WIDTH // 2 - 200, 150, 400, 90)
+                    if pygame.Rect(GAME_WIDTH // 2 - 200, 150, 400, 90).collidepoint(mouse_pos):
                         current_mode = 1
                         reset_game_physics()
                         game_state = STATE_AIMING
-                    # モードボタン2: (100, 260, 400, 90)
-                    elif pygame.Rect(100, 260, 400, 90).collidepoint(mouse_pos):
+                    # モードボタン2: (GAME_WIDTH // 2 - 200, 260, 400, 90)
+                    elif pygame.Rect(GAME_WIDTH // 2 - 200, 260, 400, 90).collidepoint(mouse_pos):
                         current_mode = 2
                         reset_game_physics()
                         game_state = STATE_AIMING
-                    # モードボタン3: (100, 370, 400, 90)
-                    elif pygame.Rect(100, 370, 400, 90).collidepoint(mouse_pos):
+                    # モードボタン3: (GAME_WIDTH // 2 - 200, 370, 400, 90)
+                    elif pygame.Rect(GAME_WIDTH // 2 - 200, 370, 400, 90).collidepoint(mouse_pos):
                         current_mode = 3
                         refresh_stock_list()
                         stock_page = 0
@@ -666,7 +666,7 @@ def main():
 
                 elif game_state == STATE_STOCK_MANAGER:
                     # ボタンA: スマホ撮影＋抽出
-                    if pygame.Rect(50, 60, 240, 40).collidepoint(mouse_pos):
+                    if pygame.Rect(GAME_WIDTH // 2 - 250, 60, 240, 40).collidepoint(mouse_pos):
                         success = run_capture_and_extract_processes(screen, font_main)
                         if success:
                             # タイムスタンプ名でストックに保存
@@ -679,21 +679,21 @@ def main():
                                 refresh_stock_list()
                                 
                     # ボタンB: 一括抽出 (raw_stock内の画像から順次抽出)
-                    elif pygame.Rect(310, 60, 240, 40).collidepoint(mouse_pos):
+                    elif pygame.Rect(GAME_WIDTH // 2 + 10, 60, 240, 40).collidepoint(mouse_pos):
                         success = run_batch_extract_process(screen, font_main)
                         if success:
                             refresh_stock_list()
                                 
                     # 戻るボタン: (200, 535, 200, 40)
-                    elif pygame.Rect(200, 535, 200, 40).collidepoint(mouse_pos):
+                    elif pygame.Rect(GAME_WIDTH // 2 - 100, SCREEN_HEIGHT - 65, 200, 40).collidepoint(mouse_pos):
                         game_state = STATE_MODE_SELECT
                         
-                    # ページネーション PREV: (50, 480, 120, 35)
-                    elif pygame.Rect(50, 480, 120, 35).collidepoint(mouse_pos):
+                    # ページネーション PREV: (50, SCREEN_HEIGHT - 120, 120, 35)
+                    elif pygame.Rect(50, SCREEN_HEIGHT - 120, 120, 35).collidepoint(mouse_pos):
                         if stock_page > 0:
                             stock_page -= 1
-                    # ページネーション NEXT: (430, 480, 120, 35)
-                    elif pygame.Rect(430, 480, 120, 35).collidepoint(mouse_pos):
+                    # ページネーション NEXT: (GAME_WIDTH - 170, SCREEN_HEIGHT - 120, 120, 35)
+                    elif pygame.Rect(GAME_WIDTH - 170, SCREEN_HEIGHT - 120, 120, 35).collidepoint(mouse_pos):
                         max_pages = math.ceil(len(stock_files) / 6)
                         if stock_page < max_pages - 1:
                             stock_page += 1
@@ -702,7 +702,8 @@ def main():
                     # 各グリッド枠: (x, y, 150, 140)
                     # 削除ボタン: (x + 25, y + 105, 100, 24)
                     cols = 3
-                    x_coords = [50, 225, 400]
+                    base_x = GAME_WIDTH // 2 - 250
+                    x_coords = [base_x, base_x + 175, base_x + 350]
                     y_coords = [135, 305]
                     start_idx = stock_page * 6
                     
@@ -814,31 +815,31 @@ def main():
             screen.blit(txt_mode_title, (GAME_WIDTH // 2 - txt_mode_title.get_width() // 2, 60))
             
             # モード1 カード
-            card1 = pygame.Rect(100, 150, 400, 90)
+            card1 = pygame.Rect(GAME_WIDTH // 2 - 200, 150, 400, 90)
             pygame.draw.rect(screen, (40, 50, 65), card1, border_radius=8)
             pygame.draw.rect(screen, COLOR_ACCENT, card1, 2, border_radius=8)
             t1 = font_large.render("1. Live Capture Mode", True, COLOR_ACCENT)
             d1 = font_main.render("Shoot on phone & drop the block every turn!", True, COLOR_TEXT)
-            screen.blit(t1, (120, 165))
-            screen.blit(d1, (120, 195))
+            screen.blit(t1, (card1.x + 20, 165))
+            screen.blit(d1, (card1.x + 20, 195))
 
             # モード2 カード
-            card2 = pygame.Rect(100, 260, 400, 90)
+            card2 = pygame.Rect(GAME_WIDTH // 2 - 200, 260, 400, 90)
             pygame.draw.rect(screen, (40, 50, 65), card2, border_radius=8)
             pygame.draw.rect(screen, COLOR_ACCENT, card2, 2, border_radius=8)
             t2 = font_large.render("2. Random Stock Mode", True, COLOR_ACCENT)
             d2 = font_main.render("Drop registered stock blocks randomly.", True, COLOR_TEXT)
-            screen.blit(t2, (120, 275))
-            screen.blit(d2, (120, 305))
+            screen.blit(t2, (card2.x + 20, 275))
+            screen.blit(d2, (card2.x + 20, 305))
 
             # モード3 カード
-            card3 = pygame.Rect(100, 370, 400, 90)
+            card3 = pygame.Rect(GAME_WIDTH // 2 - 200, 370, 400, 90)
             pygame.draw.rect(screen, (40, 50, 65), card3, border_radius=8)
             pygame.draw.rect(screen, COLOR_ACCENT, card3, 2, border_radius=8)
             t3 = font_large.render("3. Manage Stock Library", True, COLOR_ACCENT)
             d3 = font_main.render("Register new blocks or delete stock files.", True, COLOR_TEXT)
-            screen.blit(t3, (120, 385))
-            screen.blit(d3, (120, 415))
+            screen.blit(t3, (card3.x + 20, 385))
+            screen.blit(d3, (card3.x + 20, 415))
             
             # フッターヒント
             txt_hint = font_main.render("Press 1, 2, or 3 on keyboard, or click the card.", True, COLOR_TEXT_MUTED)
@@ -847,14 +848,14 @@ def main():
         # B. STOCK_MANAGER 画面
         elif game_state == STATE_STOCK_MANAGER:
             # ボタンA: スマホ撮影＋抽出
-            btn_a = pygame.Rect(50, 60, 240, 40)
+            btn_a = pygame.Rect(GAME_WIDTH // 2 - 250, 60, 240, 40)
             pygame.draw.rect(screen, (0, 150, 136), btn_a, border_radius=5)
             pygame.draw.rect(screen, (255, 255, 255), btn_a, 1, border_radius=5)
             txt_a = font_main.render("+ SHOOT & EXTRACT", True, COLOR_TEXT)
             screen.blit(txt_a, (btn_a.centerx - txt_a.get_width() // 2, btn_a.centery - txt_a.get_height() // 2))
 
             # ボタンB: 一括抽出 (raw_stock内の画像から順次抽出)
-            btn_b = pygame.Rect(310, 60, 240, 40)
+            btn_b = pygame.Rect(GAME_WIDTH // 2 + 10, 60, 240, 40)
             pygame.draw.rect(screen, (100, 80, 140), btn_b, border_radius=5)
             pygame.draw.rect(screen, (255, 255, 255), btn_b, 1, border_radius=5)
             txt_b = font_main.render("+ BATCH EXTRACT (raw_stock/)", True, COLOR_TEXT)
@@ -862,7 +863,8 @@ def main():
             
             # グリッド描画 (最大6つ)
             cols = 3
-            x_coords = [50, 225, 400]
+            base_x = GAME_WIDTH // 2 - 250
+            x_coords = [base_x, base_x + 175, base_x + 350]
             y_coords = [135, 305]
             start_idx = stock_page * 6
             
@@ -910,23 +912,23 @@ def main():
             max_pages = max(1, math.ceil(len(stock_files) / 6))
             
             # PREV
-            prev_btn = pygame.Rect(50, 480, 120, 35)
+            prev_btn = pygame.Rect(50, SCREEN_HEIGHT - 120, 120, 35)
             pygame.draw.rect(screen, (40, 50, 65) if stock_page > 0 else (25, 30, 40), prev_btn, border_radius=4)
-            txt_prev = font_main.render("PREV", True, COLOR_TEXT if stock_page > 0 else COLOR_TEXT_MUTED)
+            txt_prev = font_main.render("< PREV", True, COLOR_TEXT if stock_page > 0 else COLOR_TEXT_MUTED)
             screen.blit(txt_prev, (prev_btn.centerx - txt_prev.get_width() // 2, prev_btn.centery - txt_prev.get_height() // 2))
             
             # NEXT
-            next_btn = pygame.Rect(430, 480, 120, 35)
+            next_btn = pygame.Rect(GAME_WIDTH - 170, SCREEN_HEIGHT - 120, 120, 35)
             pygame.draw.rect(screen, (40, 50, 65) if stock_page < max_pages - 1 else (25, 30, 40), next_btn, border_radius=4)
-            txt_next = font_main.render("NEXT", True, COLOR_TEXT if stock_page < max_pages - 1 else COLOR_TEXT_MUTED)
+            txt_next = font_main.render("NEXT >", True, COLOR_TEXT if stock_page < max_pages - 1 else COLOR_TEXT_MUTED)
             screen.blit(txt_next, (next_btn.centerx - txt_next.get_width() // 2, next_btn.centery - txt_next.get_height() // 2))
 
             # ページインジケータ
             txt_pg = font_main.render(f"Page {stock_page + 1} / {max_pages}", True, COLOR_TEXT)
-            screen.blit(txt_pg, (GAME_WIDTH // 2 - txt_pg.get_width() // 2, 488))
+            screen.blit(txt_pg, (GAME_WIDTH // 2 - txt_pg.get_width() // 2, SCREEN_HEIGHT - 112))
 
             # メニューへ戻るボタン
-            back_btn = pygame.Rect(200, 535, 200, 40)
+            back_btn = pygame.Rect(GAME_WIDTH // 2 - 100, SCREEN_HEIGHT - 65, 200, 40)
             pygame.draw.rect(screen, (50, 60, 75), back_btn, border_radius=5)
             txt_back = font_large.render("Back to Menu", True, COLOR_TEXT)
             screen.blit(txt_back, (back_btn.centerx - txt_back.get_width() // 2, back_btn.centery - txt_back.get_height() // 2))
@@ -934,14 +936,14 @@ def main():
         # C. プレイ中 (AIMING / FALLING / GAMEOVER)
         else:
             # 土台 (ステージ) の描画
-            stage_w = int(last_stage_width)
-            pygame.draw.rect(screen, COLOR_STAGE, (300 - stage_w // 2, 470, stage_w, 20), border_radius=5)
-            pygame.draw.rect(screen, (0, 96, 100), (300 - stage_w // 2, 490, stage_w, 5), border_radius=2)
+            stage_w = int(slider_stage_width.val)
+            pygame.draw.rect(screen, COLOR_STAGE, (GAME_WIDTH // 2 - stage_w // 2, SCREEN_HEIGHT - 130, stage_w, 20), border_radius=5)
+            pygame.draw.rect(screen, (0, 96, 100), (GAME_WIDTH // 2 - stage_w // 2, SCREEN_HEIGHT - 110, stage_w, 5), border_radius=2)
             
             # 照準ガイド線 (AIMING時のみ)
             if game_state == STATE_AIMING:
                 dash_y = obj_y + 40
-                while dash_y < 470:
+                while dash_y < SCREEN_HEIGHT - 130:
                     pygame.draw.line(screen, (60, 70, 85), (obj_x, dash_y), (obj_x, dash_y + 8), 2)
                     dash_y += 16
 
@@ -984,21 +986,21 @@ def main():
         # タイトル
         title_text = font_title.render("TOWER", True, COLOR_TEXT)
         title_text2 = font_title.render("BATTLE", True, COLOR_ACCENT)
-        screen.blit(title_text, (620, 30))
-        screen.blit(title_text2, (620, 70))
+        screen.blit(title_text, (GAME_WIDTH + 20, 30))
+        screen.blit(title_text2, (GAME_WIDTH + 20, 70))
         
         # スコア表示 (プレイ中のみ表示)
         if game_state in [STATE_AIMING, STATE_FALLING, STATE_GAMEOVER]:
             score_label = font_main.render("OBJECTS PLACED:", True, COLOR_TEXT_MUTED)
             score_val = font_large.render(f"{score}", True, (255, 235, 59))
-            screen.blit(score_label, (620, 110))
-            screen.blit(score_val, (620, 130))
+            screen.blit(score_label, (GAME_WIDTH + 20, 110))
+            screen.blit(score_val, (GAME_WIDTH + 20, 130))
         else:
             # メニューやマネージャー時はタイトル説明
             desc_label = font_main.render("Select menu options", True, COLOR_TEXT_MUTED)
             desc_label2 = font_main.render("to start playing.", True, COLOR_TEXT_MUTED)
-            screen.blit(desc_label, (620, 110))
-            screen.blit(desc_label2, (620, 130))
+            screen.blit(desc_label, (GAME_WIDTH + 20, 110))
+            screen.blit(desc_label2, (GAME_WIDTH + 20, 130))
 
         # スライダー描画
         for slider in sliders:
@@ -1017,8 +1019,8 @@ def main():
         else:
             status_val = font_main.render("GAME OVER", True, COLOR_RED)
             
-        screen.blit(status_label, (620, 360))
-        screen.blit(status_val, (620, 380))
+        screen.blit(status_label, (GAME_WIDTH + 20, 360))
+        screen.blit(status_val, (GAME_WIDTH + 20, 380))
 
         # 操作方法説明
         controls_title = font_main.render("CONTROLS:", True, COLOR_TEXT_MUTED)
@@ -1026,11 +1028,11 @@ def main():
         ctrl_space = font_main.render("SPACE : Rotate (Hold)", True, COLOR_TEXT)
         ctrl_down = font_main.render("DOWN : Drop Object", True, COLOR_TEXT)
         ctrl_menu = font_main.render("M Key : Mode Menu", True, COLOR_TEXT)
-        screen.blit(controls_title, (620, 430))
-        screen.blit(ctrl_left_right, (620, 455))
-        screen.blit(ctrl_space, (620, 475))
-        screen.blit(ctrl_down, (620, 495))
-        screen.blit(ctrl_menu, (620, 515))
+        screen.blit(controls_title, (GAME_WIDTH + 20, 430))
+        screen.blit(ctrl_left_right, (GAME_WIDTH + 20, 455))
+        screen.blit(ctrl_space, (GAME_WIDTH + 20, 475))
+        screen.blit(ctrl_down, (GAME_WIDTH + 20, 495))
+        screen.blit(ctrl_menu, (GAME_WIDTH + 20, 515))
 
         # 3. ゲームオーバー時のオーバーレイUIの描画
         if game_state == STATE_GAMEOVER:
